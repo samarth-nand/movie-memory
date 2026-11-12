@@ -236,6 +236,12 @@ The service gets its dependencies (repository, generator, user lookup) passed in
   - Next 16 removed `next lint` and renamed middleware to Proxy.
   - The Auth.js v5 environment variable names changed.
   - Google merged Big Shoulders Display into Big Shoulders.
+- **Agent skills and tools I used:**
+  - **[ponytail](https://github.com/DietrichGebert/ponytail)** (a Claude Code plugin): I ran a cleanup pass using its `ponytail` and `ponytail-audit` skills. Their rules are the smallest complete change, delete what nothing uses, keep existing layers, and never cut validation, security, or tests. That pass removed four unused dependencies, two unneeded files, two redundant scripts, a custom error class, and a duplicate database lookup.
+  - **Neon's agent setup guide and the Neon CLI:** for linking the database, and for creating schema-only, auto-expiring branches for the integration tests.
+  - **GitHub CLI:** for creating and publishing the repository.
+  - **Headless Chrome (puppeteer-core):** for screenshot checks of every screen and state.
+  - The brief suggested the Impeccable or Taste design skills. They weren't installed, so the UI was designed by hand and checked with screenshots.
 - **Testing.** Beyond the unit tests, I used it to:
   - drive live checks of every auth redirect with a temporary database session
   - verify the cache window, stale fallback, lock serialization, and failure cooldown against the real database
