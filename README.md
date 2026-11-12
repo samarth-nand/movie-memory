@@ -231,7 +231,7 @@ The service gets its dependencies (repository, generator, user lookup) passed in
   - session checks in pages rather than Proxy
   - the scope of the UI iterations
   - which fixes to make after grading the build against the spec: database length limits, a failure cooldown, and Postgres integration tests
-- **Implementation assistant.** I used Claude Code (Anthropic's coding agent) to write code and tests to my specifications, then reviewed and adjusted the result. I had it check library APIs against the installed packages instead of relying on memory. That surfaced several breaking changes I then designed around:
+- **Implementation assistant.** I used Claude Code to write code and tests to my specifications, then reviewed and adjusted the result. I had it check library APIs against the installed packages instead of relying on memory. That surfaced several breaking changes I then designed around:
   - Prisma 7 moved connection URLs out of the schema.
   - Next 16 removed `next lint` and renamed middleware to Proxy.
   - The Auth.js v5 environment variable names changed.
