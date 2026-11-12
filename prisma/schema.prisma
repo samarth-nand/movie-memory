@@ -70,7 +70,12 @@ model Fact {
   // so history stays correct if the user later changes their movie.
   movieTitle String
   content    String   @db.Text
-  createdAt  DateTime @default(now())
+  // Set by the database, never the app server, because the 60-second cache window
+  // is measured against the database clock. clock_timestamp() rather than now():
+  // inside a transaction now() is frozen at transaction start, which would
+  // backdate a fact by however long the OpenAI call took. timestamptz so the
+  // age arithmetic doesn't depend on the session time zone.
+  createdAt  DateTime @default(dbgenerated("clock_timestamp()")) @db.Timestamptz(3)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

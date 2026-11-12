@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { ErrorResponse, FactResponse } from "@/lib/api";
 import { getSessionUserId } from "@/lib/session";
-import { getFactForUser } from "@/services/fact.service";
+import { getFactForUser } from "@/services/facts";
 
 // GET /api/fact takes no parameters. Whose fact it is comes only from the
 // session cookie, so there is nothing a client can change to ask for someone else's.

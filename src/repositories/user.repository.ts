@@ -34,3 +34,8 @@ export async function setFavoriteMovieIfUnset(userId: string, title: string): Pr
   });
   return count === 1;
 }
+
+export async function findFavoriteMovie(userId: string): Promise<string | null> {
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { favoriteMovie: true } });
+  return user?.favoriteMovie ?? null;
+}

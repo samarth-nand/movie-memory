@@ -7,9 +7,15 @@ import { env } from "@/lib/env";
 // The only file that imports the OpenAI SDK.
 
 const MODEL = "gpt-5.4-mini";
-/** Per attempt. With one retry the worst case is about 2x this plus the SDK's short backoff. */
+/** Per attempt. */
 export const OPENAI_TIMEOUT_MS = 8_000;
 export const OPENAI_MAX_RETRIES = 1;
+/**
+ * Hard cap on one generation, retry included. Without it, a 429 with a long
+ * retry-after header could stretch the retry wait well past 2 x 8s. The fact
+ * service sizes its lock and transaction timeouts from this number.
+ */
+export const GENERATION_DEADLINE_MS = 18_000;
 
 const client = new OpenAI({
   apiKey: env.OPENAI_API_KEY,
@@ -46,14 +52,17 @@ export class FactGenerationError extends Error {
 export async function generateMovieFact(movieTitle: string): Promise<string> {
   let parsed: z.infer<typeof modelOutput> | null;
   try {
-    const response = await client.responses.parse({
-      model: MODEL,
-      instructions: INSTRUCTIONS,
-      // JSON-encoding delimits the title as data: quotes and newlines in it are escaped.
-      input: JSON.stringify({ movie_title: movieTitle }),
-      text: { format: zodTextFormat(modelOutput, "movie_fact") },
-      // No tools: the model can't fetch, browse, or touch any data.
-    });
+    const response = await client.responses.parse(
+      {
+        model: MODEL,
+        instructions: INSTRUCTIONS,
+        // JSON-encoding delimits the title as data: quotes and newlines in it are escaped.
+        input: JSON.stringify({ movie_title: movieTitle }),
+        text: { format: zodTextFormat(modelOutput, "movie_fact") },
+        // No tools: the model can't fetch, browse, or touch any data.
+      },
+      { signal: AbortSignal.timeout(GENERATION_DEADLINE_MS) },
+    );
     parsed = response.output_parsed;
   } catch (error) {
     throw new FactGenerationError("OpenAI request failed", { cause: error });
