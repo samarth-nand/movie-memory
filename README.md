@@ -16,7 +16,14 @@ npm run dev                  # http://localhost:3000
 ```
 
 Other commands:
-- `npm test` runs Vitest. It needs no database, network, or env variables.
+- `npm test` runs Vitest. It needs no database, network, or env variables. The database integration tests are skipped unless `TEST_DATABASE_URL` is set.
+- `npm run test:integration` runs the repository tests against a real, **throwaway** Postgres. With Neon:
+  ```bash
+  neon branches create --name it-local --schema-only --expires-at <ISO time ~1h ahead>
+  TEST_DATABASE_URL="$(neon connection-string it-local --pooled)" npm run test:integration
+  neon branches delete it-local
+  ```
+  Use the pooled URL: the app uses it at runtime, so the test also proves the lock works through the pooler.
 - `npm run lint` runs ESLint.
 - `npm run build` creates a production build.
 
@@ -91,13 +98,14 @@ Auth.js v5 with the Prisma adapter and **database sessions**, which can be revok
 
 ```prisma
 model User {                 // Auth.js fields, plus:
-  favoriteMovie String?      // null = not onboarded yet
+  favoriteMovie String?   @db.VarChar(100)    // null = not onboarded yet
+  factFailedAt  DateTime? @db.Timestamptz(3)  // last failed generation, for the cooldown
 }
 
 model Fact {
   id         String   @id @default(cuid())
   userId     String   // → User, onDelete: Cascade
-  movieTitle String   // snapshot of the title the fact is about
+  movieTitle String   @db.VarChar(100) // snapshot of the title the fact is about
   content    String   @db.Text
   createdAt  DateTime @default(dbgenerated("clock_timestamp()")) @db.Timestamptz(3)
   @@index([userId, movieTitle, createdAt(sort: Desc)])
@@ -107,6 +115,8 @@ model Fact {
 - **`favoriteMovie` is one nullable column on User**, not a profile table. `null` is the "needs onboarding" state.
 - **`Fact.movieTitle` is a snapshot, not a foreign key.** A fact is about the title it was generated for. The cache key is (user, current title), so a changed movie misses the cache with no invalidation code.
 - **The composite index matches the one hot query,** "latest fact for this user and movie": an index scan that stops at the first row, with no sort. `userId` leads, so every lookup is scoped to one user.
+- **The 100-character limit is also in the database** (`VARCHAR(100)`), backing up the app's validation. Postgres counts characters; JavaScript counts UTF-16 units, which is never fewer, so anything the app accepts fits.
+- **`factFailedAt` is one nullable column,** not a table: it only ever holds the time of the user's latest failure.
 - **`createdAt` is set by the database with `clock_timestamp()` and stored as `timestamptz`.** See the cache window below for why.
 - **The Account, Session, and Fact tables cascade on user delete.**
 
@@ -116,6 +126,7 @@ model Fact {
 3. **Re-check.** With the lock held, read again. If the request ahead of us just stored a fact, return it. This is what turns a burst into a single OpenAI call.
 4. **Generate.** Call OpenAI, insert the fact, return it. Committing releases the lock.
 5. **Fail soft.** On an OpenAI timeout or error, a lock-wait timeout, or a transaction timeout, return the most recent fact for this user and movie with `stale: true`. If there isn't one, return a 503 with a friendly message.
+6. **Cool down.** A failed generation records `User.factFailedAt` (database clock, written inside the transaction so it commits). For the next 15 seconds, waiters and refreshes skip OpenAI and go straight to step 5. A burst during an OpenAI outage makes one call instead of one per waiting request.
 
 **The cache window uses the database clock.** Postgres computes each fact's age as `clock_timestamp() - createdAt`, and `createdAt` is set by the column default. App servers never compare their own clocks against stored times, so clock skew between instances can't move the 60-second boundary. It's `clock_timestamp()` rather than `now()` because `now()` is frozen at the start of the transaction: a fact stored after a 6-second OpenAI call would be stamped 6 seconds early.
 
@@ -148,13 +159,14 @@ model Fact {
   - Missing photo: falls back to an initial.
   - Photos are rendered only from Google's image host.
 
-### Tests (`npm test`, 30 tests)
+### Tests (`npm test`: 34 tests; `npm run test:integration`: 6 more against Postgres)
 - **The 60-second cache:**
   - A hit under 60s.
   - Just under the boundary (59.999s) is cached; exactly 60s regenerates, because the rule is "less than 60".
   - Moving from 59 to 60 seconds.
   - Movie scoping, and the no-movie case.
 - **Burst:** two concurrent requests make exactly one OpenAI call and both get the same fact.
+- **Cooldown:** after a failure, requests within 15 seconds skip OpenAI and serve the fallback; at 15 seconds it tries again; a burst during an outage makes one call; one user's failure doesn't affect another.
 - **Failure:** returns the most recent fact marked stale; returns `unavailable` when there's none; lock or transaction failures fall back the same way.
 - **Authorization:**
   - Another user's fresh fact for the same movie is never returned.
@@ -163,7 +175,15 @@ model Fact {
   - The service is called only with the session user.
 - **Validation:** trimming, empty input, the 100/101-character boundary, and real titles with unusual characters.
 
-The service gets its dependencies (repository, generator, user lookup) passed in, so tests use an in-memory store with a controllable clock and a mocked generator. There's no network or database involved. The real advisory lock and SQL were verified by hand against Neon: three concurrent requests completed about 2.3s apart, serialized.
+The service gets its dependencies (repository, generator, user lookup) passed in, so tests use an in-memory store with a controllable clock and a mocked generator. There's no network or database involved.
+
+**The integration tests** (`tests/fact.repository.integration.test.ts`) run the real repository against Postgres through the pooled URL:
+- Facts are scoped to the requesting user, even for the same movie.
+- Ages come from the database clock: a fact backdated by 90 seconds reads as about 90 seconds old.
+- `createdAt` is the time of the write, not of the transaction start. Checked by making the test fail: switching the default back to `now()` made it fail at 1.77s.
+- The lock: two locked sections for one user run one after the other, while another user isn't blocked.
+- The lock wait gives up after `lockWaitMs`.
+- The failure marker is per user and expires after the cooldown.
 
 ## Which variant, and why
 
@@ -177,7 +197,7 @@ The service gets its dependencies (repository, generator, user lookup) passed in
   - A unique constraint per 60-second window uses fixed buckets: requests at 12:00:59 and 12:01:00 both generate, and the losing request has already paid for the OpenAI call before its insert fails.
   - A "generation in progress" flag needs expiry handling for crashed requests.
   - The advisory lock releases itself on commit, rollback, or disconnect. Because it's transaction-scoped, it works through Neon's transaction-mode pooler.
-- **During an OpenAI outage, waiters retry one at a time.** If the request holding the lock fails, the next waiter tries OpenAI itself. Calls never overlap, but a burst during an outage makes several sequential attempts, each bounded by the timeouts.
+- **A 15-second cooldown after failures.** It stops a burst during an outage from retrying OpenAI once per waiting request: live, three simultaneous requests went from finishing at 3.3s, 5.2s, and 7.8s to all finishing around 4s, with one OpenAI call. The cost: after a brief failure, the user waits up to 15 seconds before a new fact is attempted, seeing the stale fact or the error meanwhile.
 - **Facts are per user, not shared per movie.** That's simple and matches the brief, but it's the largest cost lever at scale.
 - **Database sessions rather than JWTs.** One extra query per request, in exchange for server-side revocation and no Edge constraints.
 - **Pages check auth, not Proxy.** Explicit and close to the data. The cost is that the redirect happens during render rather than at the edge.
@@ -185,8 +205,7 @@ The service gets its dependencies (repository, generator, user lookup) passed in
 
 ## What I'd improve with 2 more hours
 
-- **Integration tests for the repository SQL** (advisory lock, `clock_timestamp()` ages) against a throwaway Neon branch, so the real lock is covered in CI, not only by hand.
-- **A short "generation failed" marker per user,** so a burst during an OpenAI outage gives up quickly instead of each waiter retrying in turn.
+- **Run the integration tests in CI,** creating and deleting the Neon branch automatically (they run locally today).
 - **Lease-row locking**, to stop holding a connection during the OpenAI call (described above).
 - **Per-user rate limiting** on `GET /api/fact`.
 - **CSP and security headers.**

@@ -10,7 +10,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "db:migrate": "prisma migrate dev",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "test:integration": "vitest run tests/fact.repository.integration.test.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.3",
