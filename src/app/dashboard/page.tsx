@@ -1,19 +1,33 @@
 import { redirect } from "next/navigation";
+import { Avatar } from "@/components/avatar";
 import { SignOutButton } from "@/components/sign-out-button";
 import { requireSessionUserId } from "@/lib/session";
 import { getUserProfile, homePathFor } from "@/services/user.service";
+import { FactCard } from "./fact-card";
 
-// Phase 3 shell: proves the redirects. Profile details and the fact arrive in Phase 5.
 export default async function DashboardPage() {
   const userId = await requireSessionUserId();
   const profile = await getUserProfile(userId);
   if (!profile) redirect("/");
-  if (homePathFor(profile) !== "/dashboard") redirect("/onboarding");
+  const movie = profile.favoriteMovie;
+  if (homePathFor(profile) !== "/dashboard" || !movie) redirect("/onboarding");
+
+  // Google may not share a name or photo. Fall back to the email, then a neutral label.
+  const displayName = profile.name?.trim() || profile.email || "Movie fan";
 
   return (
     <main>
-      <h1>{profile.favoriteMovie}</h1>
-      <SignOutButton />
+      <header>
+        <Avatar image={profile.image} label={displayName} />
+        <div>
+          <p>{displayName}</p>
+          {profile.email && profile.email !== displayName && <p>{profile.email}</p>}
+        </div>
+        <SignOutButton />
+      </header>
+      <p>Your favorite movie</p>
+      <h1>{movie}</h1>
+      <FactCard />
     </main>
   );
 }
