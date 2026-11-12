@@ -22,3 +22,6 @@ coverage/
 # private working notes, not part of the submission
 DECISIONS.md
 NOTES.md
+AGENTS.md
+
+.claude
