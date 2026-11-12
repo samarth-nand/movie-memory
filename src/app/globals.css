@@ -1,1 +1,56 @@
 @import "tailwindcss";
+
+@theme {
+  --color-ink: #1e2a3a; /* slate ink: text, buttons */
+  --color-screen: #eef0f2; /* screen grey: page */
+  --color-muted: #5b6675; /* muted slate: secondary text (5.2:1 on screen grey) */
+  --color-marquee: #f2b33d; /* marquee amber: the fact card only */
+  --color-error: #b3261e;
+
+  --font-sans: var(--font-instrument-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-big-shoulders), ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+  }
+
+  /* One focus style everywhere, visible on grey and on amber. */
+  :focus-visible {
+    outline: 3px solid var(--color-ink);
+    outline-offset: 3px;
+  }
+}
+
+@utility font-marquee {
+  font-family: var(--font-display);
+  /* Big Shoulders' largest optical size is the Display cut. */
+  font-variation-settings: "opsz" 72;
+  font-weight: 800;
+  text-transform: uppercase;
+  line-height: 0.95;
+  letter-spacing: -0.01em;
+}
+
+/* A row of marquee bulbs. */
+@utility bulbs {
+  height: 12px;
+  background-image: radial-gradient(circle, var(--color-ink) 0 2.5px, transparent 3px);
+  background-size: 16px 12px;
+  background-position: 0 center;
+  opacity: 0.8;
+}
+
+/* While loading, the bulbs chase. The only animation in the app; off for reduced motion. */
+@keyframes bulb-chase {
+  to {
+    background-position: 16px center;
+  }
+}
+
+@utility bulbs-chasing {
+  @media (prefers-reduced-motion: no-preference) {
+    animation: bulb-chase 0.6s steps(2) infinite;
+  }
+}

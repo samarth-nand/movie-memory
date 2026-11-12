@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { Wordmark } from "@/components/wordmark";
 import { signInWithGoogle } from "@/lib/auth-actions";
 import { getSessionUserId } from "@/lib/session";
 import { getUserProfile, homePathFor } from "@/services/user.service";
@@ -17,13 +18,34 @@ export default async function Home({
   const { error } = await searchParams;
 
   return (
-    <main>
-      <h1>Movie Memory</h1>
-      <p>Tell us your favorite movie. We&apos;ll tell you something about it.</p>
-      {error && <p role="alert">Sign-in didn&apos;t work. Please try again.</p>}
-      <form action={signInWithGoogle}>
-        <button type="submit">Sign in with Google</button>
-      </form>
+    <main className="mx-auto flex min-h-dvh max-w-5xl flex-col px-4 py-6 sm:px-8 sm:py-10">
+      <Wordmark />
+
+      <div className="my-auto py-16">
+        <h1 className="font-marquee text-[clamp(3rem,10vw,6.5rem)] text-balance">
+          Your favorite movie, remembered.
+        </h1>
+        <p className="mt-6 max-w-md text-lg text-muted">
+          Tell us the film you love. Each time you visit, we&apos;ll tell you something about it.
+        </p>
+
+        {error && (
+          <p role="alert" className="mt-6 font-medium text-error">
+            Sign-in didn&apos;t work. Please try again.
+          </p>
+        )}
+
+        <form action={signInWithGoogle} className="mt-8">
+          <button
+            type="submit"
+            className="bg-ink px-6 py-3 font-medium text-screen transition-colors hover:bg-ink/85"
+          >
+            Sign in with Google
+          </button>
+        </form>
+      </div>
+
+      <p className="text-sm text-muted">We use your Google name, email, and photo. Nothing else.</p>
     </main>
   );
 }
