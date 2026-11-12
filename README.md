@@ -217,21 +217,43 @@ The service gets its dependencies (repository, generator, user lookup) passed in
 
 ## AI usage
 
-**I owned the design and the decisions; AI was the tool I directed to implement, test, and harden them.**
+**Every architecture decision, and the plan for how this would be built, was mine. I wrote it as a detailed brief before any code existed. AI was the tool I directed to implement that plan, test it, and harden it.**
 
-- **Design, before any code.** I wrote the brief the project was built against:
-  - the layered architecture (handlers → services → repositories, with one AI gateway)
-  - the data model goals
-  - the security rules: user ID only from the session, server-side validation, no secrets on the client
-  - the prompt-injection defenses
-  - the Variant A approach: a Postgres advisory lock with a re-check, a cache window measured by the database clock, explicit OpenAI timeouts with one retry, and a stale-fact fallback
-  - the visual direction
+- **Architecture and build plan: mine, written up front.** My brief specified:
+  - **Stack and tooling:** TypeScript, Next.js App Router, Prisma on Postgres, Auth.js for Google sign-in, the OpenAI SDK, Vitest. Library APIs were to be checked against current docs, not memory.
+  - **Architecture.**
+    - Thin route handlers and server actions: session check, Zod validation, call a service.
+    - Services own the business rules.
+    - Repositories are the only Prisma importers.
+    - A single AI gateway is the only OpenAI importer.
+    - Server components call services directly; client components go through one typed fetch helper (`lib/api.ts`) that parses with Zod and normalizes errors.
+    - `server-only` markers on server modules.
+    - Environment variables validated with Zod at startup.
+  - **Data model requirements:** a nullable favorite movie on the user, and a Fact table with an index built for "latest fact for this user and movie".
+  - **Security model:**
+    - The user ID comes only from the session.
+    - Server-side title validation (trim, 1–100 characters, no character allowlist).
+    - No secrets reach the client.
+    - Graceful handling of a missing Google name or photo.
+  - **Prompt-injection defenses:** a fixed system prompt, the title passed as delimited data, single-field structured output validated with Zod, no tools, and plain-text rendering.
+  - **Variant A design:**
+    - A cache window measured by the database clock rather than app servers.
+    - A per-user Postgres advisory lock inside a transaction, with a re-check after acquiring it.
+    - An explicit transaction timeout longer than the OpenAI timeout.
+    - About 8 seconds for OpenAI with at most one retry.
+    - A stale-fact fallback, otherwise a friendly error.
+    - The connection-holding tradeoff documented.
+  - **Auth approach:** avoid Edge middleware with database sessions, with the four redirect rules.
+  - **Testing strategy:** the 60-second boundary, failure fallback, and authorization, with OpenAI mocked so the service is testable without a network.
+  - **Visual direction:** the theater-marquee concept, Big Shoulders Display for the title, Instrument Sans for everything else, the five-color palette, the patterns to avoid, the state copy, responsiveness, and visible keyboard focus.
+  - **Working rules:** build in phases with a review after each, small commits, never commit secrets, keep `.env.example` current, ask when the spec is ambiguous, and add unrequested ideas to a "2 more hours" list instead of building them.
+
 - **Phased delivery with checkpoints.** I set the phases (plan, scaffold, auth, onboarding, facts, Variant A, UI, docs) and reviewed the work at each checkpoint before moving on. I made the tradeoff calls:
   - keeping the schema minimal
   - session checks in pages rather than Proxy
   - the scope of the UI iterations
   - which fixes to make after grading the build against the spec: database length limits, a failure cooldown, and Postgres integration tests
-- **Implementation assistant.** I used Claude Code to write code and tests to my specifications, then reviewed and adjusted the result. I had it check library APIs against the installed packages instead of relying on memory. That surfaced several breaking changes I then designed around:
+- **Implementation assistant.** I used Claude Code to write the code and tests to my specification, then reviewed and adjusted the result. Where it proposed lower-level details inside my design, I reviewed and approved them before they went in: the exact Prisma schema, using `clock_timestamp()`, the specific timeout values, and the failure cooldown. I had it check library APIs against the installed packages instead of relying on memory. That surfaced several breaking changes I then designed around:
   - Prisma 7 moved connection URLs out of the schema.
   - Next 16 removed `next lint` and renamed middleware to Proxy.
   - The Auth.js v5 environment variable names changed.
