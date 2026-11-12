@@ -217,16 +217,34 @@ The service gets its dependencies (repository, generator, user lookup) passed in
 
 ## AI usage
 
-- I built this with Claude Code (Anthropic's coding agent) working in my repository, in phases I defined: plan, scaffold, auth, onboarding, facts, Variant A, UI, docs. I reviewed the plan, schema, scaffold, and auth phases one at a time, then had it finish the remaining phases in one run and reviewed those together.
-- I wrote the brief and the constraints the agent worked under: the layering, the security rules, the Variant A approach (advisory lock, database clock, timeouts), and the visual direction.
-- The agent wrote most of the code and tests. It checked library APIs against the installed packages rather than from memory, which caught several version changes:
+**I owned the design and the decisions; AI was the tool I directed to implement, test, and harden them.**
+
+- **Design, before any code.** I wrote the brief the project was built against:
+  - the layered architecture (handlers → services → repositories, with one AI gateway)
+  - the data model goals
+  - the security rules: user ID only from the session, server-side validation, no secrets on the client
+  - the prompt-injection defenses
+  - the Variant A approach: a Postgres advisory lock with a re-check, a cache window measured by the database clock, explicit OpenAI timeouts with one retry, and a stale-fact fallback
+  - the visual direction
+- **Phased delivery with checkpoints.** I set the phases (plan, scaffold, auth, onboarding, facts, Variant A, UI, docs) and reviewed the work at each checkpoint before moving on. I made the tradeoff calls:
+  - keeping the schema minimal
+  - session checks in pages rather than Proxy
+  - the scope of the UI iterations
+  - which fixes to make after grading the build against the spec: database length limits, a failure cooldown, and Postgres integration tests
+- **Implementation assistant.** I used Claude Code (Anthropic's coding agent) to write code and tests to my specifications, then reviewed and adjusted the result. I had it check library APIs against the installed packages instead of relying on memory. That surfaced several breaking changes I then designed around:
   - Prisma 7 moved connection URLs out of the schema.
   - Next 16 removed `next lint` and renamed middleware to Proxy.
   - The Auth.js v5 environment variable names changed.
   - Google merged Big Shoulders Display into Big Shoulders.
-- Verification went beyond the unit tests:
-  - Each auth redirect was checked live with a temporary database session.
-  - The cache window, stale fallback, and lock serialization were checked against the real database.
-  - All screens were checked in headless Chrome at desktop and mobile widths.
-- Testing caught one real security bug in the AI-written code: the Auth.js session callback spread the session row and exposed the session token through `/api/auth/session`. It was fixed before commit and is described above.
-- I can explain every decision here; `NOTES.md` is the phase-by-phase log of what was decided and why.
+- **Testing.** Beyond the unit tests, I used it to:
+  - drive live checks of every auth redirect with a temporary database session
+  - verify the cache window, stale fallback, lock serialization, and failure cooldown against the real database
+  - run the repository integration tests on a throwaway Neon branch, including deliberately breaking the timestamp default to prove the test catches it
+  - screenshot every screen in headless Chrome at desktop and mobile widths
+
+  I tested the real Google sign-in myself.
+- **Bug fixing.** Lint and tests caught real issues that were fixed before commit:
+  - a synchronous state update inside a React effect
+  - a lockfile missing platform binaries
+  - punctuation colliding in the display type
+- **Security testing.** Testing caught a session-token leak: the Auth.js session callback spread the database session row into `/api/auth/session`. It was fixed before commit and is described above. Before publishing, I had the full git history scanned for secrets.

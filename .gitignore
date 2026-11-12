@@ -19,5 +19,6 @@ next-env.d.ts
 .DS_Store
 coverage/
 
-# private working notes (decisions + scaling), not part of the submission
+# private working notes, not part of the submission
 DECISIONS.md
+NOTES.md
