@@ -8,8 +8,8 @@ import { env } from "@/lib/env";
 
 const MODEL = "gpt-5.4-mini";
 /** Per attempt. */
-export const OPENAI_TIMEOUT_MS = 8_000;
-export const OPENAI_MAX_RETRIES = 1;
+const OPENAI_TIMEOUT_MS = 8_000;
+const OPENAI_MAX_RETRIES = 1;
 /**
  * Hard cap on one generation, retry included. Without it, a 429 with a long
  * retry-after header could stretch the retry wait well past 2 x 8s. The fact
@@ -38,16 +38,9 @@ const modelOutput = z.object({ fact: z.string() });
 /** What we accept: checked again after the SDK parses, so bad output never reaches storage. */
 const acceptedFact = z.string().trim().min(1).max(600);
 
-export class FactGenerationError extends Error {
-  constructor(message: string, options?: { cause?: unknown }) {
-    super(message, options);
-    this.name = "FactGenerationError";
-  }
-}
-
 /**
- * Asks OpenAI for one fact about the title. Throws FactGenerationError on any
- * failure: timeout, API error, refusal, or output that fails validation.
+ * Asks OpenAI for one fact about the title. Throws on any failure: timeout,
+ * API error, refusal, or output that fails validation.
  */
 export async function generateMovieFact(movieTitle: string): Promise<string> {
   let parsed: z.infer<typeof modelOutput> | null;
@@ -65,10 +58,10 @@ export async function generateMovieFact(movieTitle: string): Promise<string> {
     );
     parsed = response.output_parsed;
   } catch (error) {
-    throw new FactGenerationError("OpenAI request failed", { cause: error });
+    throw new Error("OpenAI request failed", { cause: error });
   }
 
   const fact = acceptedFact.safeParse(parsed?.fact);
-  if (!fact.success) throw new FactGenerationError("OpenAI returned no usable fact");
+  if (!fact.success) throw new Error("OpenAI returned no usable fact");
   return fact.data;
 }

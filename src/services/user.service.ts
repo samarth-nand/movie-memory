@@ -20,6 +20,6 @@ export function homePathFor(profile: Pick<UserProfile, "favoriteMovie">): "/onbo
  * second tab), the first answer stands and the caller still moves on to the
  * dashboard; there's nothing for the user to fix.
  */
-export async function completeOnboarding(userId: string, movieTitle: string): Promise<void> {
-  await setFavoriteMovieIfUnset(userId, movieTitle);
+export function completeOnboarding(userId: string, movieTitle: string): Promise<void> {
+  return setFavoriteMovieIfUnset(userId, movieTitle);
 }

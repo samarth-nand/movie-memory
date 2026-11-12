@@ -1,7 +1,7 @@
 import "server-only";
 import { GENERATION_DEADLINE_MS, generateMovieFact } from "@/lib/ai-gateway";
 import { createPrismaFactRepository } from "@/repositories/fact.repository";
-import { findFavoriteMovie } from "@/repositories/user.repository";
+import { findUserProfile } from "@/repositories/user.repository";
 import { createFactService } from "./fact.service";
 
 // Wires the fact service to Postgres and OpenAI. Kept apart from fact.service.ts
@@ -18,7 +18,7 @@ export const { getFactForUser } = createFactService({
     lockWaitMs: LOCK_WAIT_MS,
     transactionTimeoutMs: TRANSACTION_TIMEOUT_MS,
   }),
-  findFavoriteMovie,
+  findFavoriteMovie: async (userId) => (await findUserProfile(userId))?.favoriteMovie ?? null,
   generateFact: generateMovieFact,
   // Server log only. The client gets a generic message, never error details.
   logError: (message, error) => console.error(message, error),

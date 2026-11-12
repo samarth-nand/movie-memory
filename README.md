@@ -135,7 +135,7 @@ model Fact {
   - Output is structured (`zodTextFormat`) with a single `fact` field, and checked again with our own Zod schema (trimmed, 1–600 characters) before storage.
   - The model gets no tools.
   - The fact renders as a React text node, never as HTML or markdown.
-- **Failures:** every failure (timeout, API error, refusal, malformed output) becomes a single `FactGenerationError`. The details are logged on the server; the client gets a generic message.
+- **Failures:** every failure (timeout, API error, refusal, malformed output) becomes one thrown error, with the original attached as its `cause`. The details are logged on the server; the client gets a generic message.
 
 ### Security
 - **The user ID comes only from the session.** `GET /api/fact` takes no parameters at all. The onboarding server action reads the session, not the form. Every fact query filters by `userId`.

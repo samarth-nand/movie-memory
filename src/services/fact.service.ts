@@ -36,7 +36,7 @@ export type FactResult =
   | { status: "unavailable" };
 
 /** "Less than 60 seconds old" is cached; exactly 60 or older regenerates. */
-export function isFresh(fact: StoredFact): boolean {
+function isFresh(fact: StoredFact): boolean {
   return fact.ageSeconds < CACHE_WINDOW_SECONDS;
 }
 
