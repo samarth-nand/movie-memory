@@ -98,20 +98,59 @@
 }
 
 /*
- * Landing page sign: an ink frame lined with lit bulbs on all four sides.
- * `space` fits whole bulbs only, flush to each edge, so the corners line up.
+ * Landing page sign: an ink frame lined with bulbs on all four sides.
+ * Bulbs come in interleaved pairs (set 1, set 2) so they can alternate like a
+ * real marquee. `space` fits whole pairs only, flush to each edge, so corners line up.
  */
+@property --bulb-1 {
+  syntax: "<color>";
+  inherits: false;
+  initial-value: #fffaeb;
+}
+@property --bulb-2 {
+  syntax: "<color>";
+  inherits: false;
+  initial-value: #fffaeb;
+}
+
 @utility marquee-frame {
-  --bulb: radial-gradient(circle, #fffaeb 0 3px, rgb(255 250 235 / 0.3) 3.5px 6px, transparent 6.5px);
+  /* A bulb: glass plus a faint halo in the same color (no halo when dim, since it's mostly transparent). */
+  --b1: radial-gradient(circle at 11px 11px, var(--bulb-1) 0 3px, color-mix(in srgb, var(--bulb-1) 30%, transparent) 3.5px 6px, transparent 6.5px);
+  --b2: radial-gradient(circle at 33px 11px, var(--bulb-2) 0 3px, color-mix(in srgb, var(--bulb-2) 30%, transparent) 3.5px 6px, transparent 6.5px);
+  --v2: radial-gradient(circle at 11px 33px, var(--bulb-2) 0 3px, color-mix(in srgb, var(--bulb-2) 30%, transparent) 3.5px 6px, transparent 6.5px);
   border: 3px solid var(--color-ink);
   padding: 22px;
   background:
-    var(--bulb) top / 22px 22px space no-repeat,
-    var(--bulb) bottom / 22px 22px space no-repeat,
-    var(--bulb) left / 22px 22px no-repeat space,
-    var(--bulb) right / 22px 22px no-repeat space,
+    var(--b1) top / 44px 22px space no-repeat,
+    var(--b2) top / 44px 22px space no-repeat,
+    var(--b1) bottom / 44px 22px space no-repeat,
+    var(--b2) bottom / 44px 22px space no-repeat,
+    var(--b1) left / 22px 44px no-repeat space,
+    var(--v2) left / 22px 44px no-repeat space,
+    var(--b1) right / 22px 44px no-repeat space,
+    var(--v2) right / 22px 44px no-repeat space,
     var(--color-ink);
   box-shadow: 8px 8px 0 0 var(--color-ink);
+
+  /* Alternate the two sets once a second: well under 3 flashes per second (WCAG 2.3.1). */
+  @media (prefers-reduced-motion: no-preference) {
+    animation: marquee-flash 1s steps(1, end) infinite;
+  }
+}
+
+@keyframes marquee-flash {
+  0% {
+    --bulb-1: #fffaeb; /* lit */
+    --bulb-2: rgb(255 250 235 / 0.22); /* dim */
+  }
+  50% {
+    --bulb-1: rgb(255 250 235 / 0.22);
+    --bulb-2: #fffaeb;
+  }
+  100% {
+    --bulb-1: #fffaeb; /* lit */
+    --bulb-2: rgb(255 250 235 / 0.22); /* dim */
+  }
 }
 
 /* The letterboard inside the sign: light panel with the rails letters slot into. */
