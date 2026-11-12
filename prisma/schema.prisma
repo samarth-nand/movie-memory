@@ -52,8 +52,11 @@ model User {
   emailVerified DateTime?
   image         String?
 
-  // null = not yet onboarded; non-null = onboarding complete
-  favoriteMovie String?
+  // null = not yet onboarded; non-null = onboarding complete.
+  // VarChar(100) backs up the app's 1-100 rule in the database. Postgres counts
+  // characters (code points); JS counts UTF-16 units, which is never fewer, so
+  // anything the app accepts fits.
+  favoriteMovie String? @db.VarChar(100)
 
   accounts Account[]
   sessions Session[]
@@ -68,7 +71,7 @@ model Fact {
   userId     String
   // Snapshot of the movie at generation time — decoupled from User.favoriteMovie
   // so history stays correct if the user later changes their movie.
-  movieTitle String
+  movieTitle String   @db.VarChar(100) // same limit as User.favoriteMovie
   content    String   @db.Text
   // Set by the database, never the app server, because the 60-second cache window
   // is measured against the database clock. clock_timestamp() rather than now():

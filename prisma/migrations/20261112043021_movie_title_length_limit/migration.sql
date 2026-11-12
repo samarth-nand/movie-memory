@@ -1,0 +1,6 @@
+-- AlterTable
+ALTER TABLE "Fact" ALTER COLUMN "movieTitle" SET DATA TYPE VARCHAR(100);
+
+-- AlterTable
+ALTER TABLE "User" ALTER COLUMN "favoriteMovie" SET DATA TYPE VARCHAR(100);
+
