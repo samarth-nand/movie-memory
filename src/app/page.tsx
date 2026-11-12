@@ -21,25 +21,30 @@ export default async function Home({
     <main className="mx-auto flex min-h-dvh max-w-5xl flex-col px-4 py-6 sm:px-8 sm:py-10">
       <Wordmark />
 
-      <div className="my-auto py-16">
-        <h1 className="font-marquee text-[clamp(3.25rem,11vw,7.5rem)] text-balance">
-          Your favorite movie, <span className="text-outline">remembered.</span>
-        </h1>
-        <p className="mt-6 max-w-md text-lg text-muted">
-          Tell us the film you love. Each time you visit, we&apos;ll tell you something about it.
-        </p>
+      {/* The sign: an ink frame of bulbs around a letterboard. */}
+      <div className="my-auto py-10">
+        <div className="marquee-frame">
+          <div className="letterboard px-5 py-10 sm:px-12 sm:py-14">
+            <h1 className="font-marquee text-[clamp(3.25rem,11vw,7.5rem)] leading-none text-balance">
+              Your favorite movie, <span className="text-outline">remembered.</span>
+            </h1>
+            <p className="mt-6 max-w-md text-lg text-muted">
+              Tell us the film you love. Each time you visit, we&apos;ll tell you something about it.
+            </p>
 
-        {error && (
-          <p role="alert" className="mt-6 font-medium text-error">
-            Sign-in didn&apos;t work. Please try again.
-          </p>
-        )}
+            {error && (
+              <p role="alert" className="mt-6 font-medium text-error">
+                Sign-in didn&apos;t work. Please try again.
+              </p>
+            )}
 
-        <form action={signInWithGoogle} className="mt-8">
-          <button type="submit" className="btn-pop">
-            Sign in with Google
-          </button>
-        </form>
+            <form action={signInWithGoogle} className="mt-8">
+              <button type="submit" className="btn-pop">
+                Sign in with Google
+              </button>
+            </form>
+          </div>
+        </div>
       </div>
 
       <p className="text-sm text-muted">We use your Google name, email, and photo. Nothing else.</p>

@@ -96,3 +96,27 @@
     animation: bulb-chase 0.5s steps(2) infinite;
   }
 }
+
+/*
+ * Landing page sign: an ink frame lined with lit bulbs on all four sides.
+ * `space` fits whole bulbs only, flush to each edge, so the corners line up.
+ */
+@utility marquee-frame {
+  --bulb: radial-gradient(circle, #fffaeb 0 3px, rgb(255 250 235 / 0.3) 3.5px 6px, transparent 6.5px);
+  border: 3px solid var(--color-ink);
+  padding: 22px;
+  background:
+    var(--bulb) top / 22px 22px space no-repeat,
+    var(--bulb) bottom / 22px 22px space no-repeat,
+    var(--bulb) left / 22px 22px no-repeat space,
+    var(--bulb) right / 22px 22px no-repeat space,
+    var(--color-ink);
+  box-shadow: 8px 8px 0 0 var(--color-ink);
+}
+
+/* The letterboard inside the sign: light panel with the rails letters slot into. */
+@utility letterboard {
+  background:
+    repeating-linear-gradient(to bottom, transparent 0 47px, rgb(30 42 58 / 0.07) 47px 48px),
+    #fff;
+}
