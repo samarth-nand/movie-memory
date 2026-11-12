@@ -22,8 +22,8 @@ export default async function Home({
       <Wordmark />
 
       <div className="my-auto py-16">
-        <h1 className="font-marquee text-[clamp(3rem,10vw,6.5rem)] text-balance">
-          Your favorite movie, remembered.
+        <h1 className="font-marquee text-[clamp(3.25rem,11vw,7.5rem)] text-balance">
+          Your favorite movie, <span className="text-outline">remembered.</span>
         </h1>
         <p className="mt-6 max-w-md text-lg text-muted">
           Tell us the film you love. Each time you visit, we&apos;ll tell you something about it.
@@ -36,10 +36,7 @@ export default async function Home({
         )}
 
         <form action={signInWithGoogle} className="mt-8">
-          <button
-            type="submit"
-            className="bg-ink px-6 py-3 font-medium text-screen transition-colors hover:bg-ink/85"
-          >
+          <button type="submit" className="btn-pop">
             Sign in with Google
           </button>
         </form>

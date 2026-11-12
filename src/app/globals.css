@@ -27,30 +27,72 @@
   font-family: var(--font-display);
   /* Big Shoulders' largest optical size is the Display cut. */
   font-variation-settings: "opsz" 72;
-  font-weight: 800;
+  font-weight: 900;
   text-transform: uppercase;
   line-height: 0.95;
   letter-spacing: -0.01em;
 }
 
-/* A row of marquee bulbs. */
+/* Hollow letters, like an unlit sign. Only on very large type, where it stays readable. */
+@utility text-outline {
+  color: transparent;
+  -webkit-text-stroke: 2px var(--color-ink);
+}
+
+/* Hard offset shadow: a printed-poster edge, not a soft glow. */
+@utility shadow-pop {
+  box-shadow: 8px 8px 0 0 var(--shadow-pop-color, var(--color-ink));
+}
+
+/* The one button style. It sits on a hard shadow and presses into it when clicked. */
+@utility btn-pop {
+  display: inline-flex;
+  align-items: center;
+  border: 2px solid var(--color-ink);
+  background: #fff;
+  color: var(--color-ink);
+  padding: 0.75rem 1.5rem;
+  font-weight: 600;
+  box-shadow: 4px 4px 0 0 var(--color-ink);
+  transition:
+    transform 120ms ease-out,
+    box-shadow 120ms ease-out;
+
+  &:hover:not(:disabled) {
+    transform: translate(-1px, -1px);
+    box-shadow: 5px 5px 0 0 var(--color-ink);
+  }
+  &:active:not(:disabled) {
+    transform: translate(4px, 4px);
+    box-shadow: 0 0 0 0 var(--color-ink);
+  }
+  &:disabled {
+    cursor: wait;
+    opacity: 0.6;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
+/* A row of lit marquee bulbs: warm white centers in ink sockets. */
 @utility bulbs {
-  height: 12px;
-  background-image: radial-gradient(circle, var(--color-ink) 0 2.5px, transparent 3px);
-  background-size: 16px 12px;
-  background-position: 0 center;
-  opacity: 0.8;
+  height: 18px;
+  background-image: radial-gradient(circle, #fffaeb 0 3px, var(--color-ink) 3.5px 5px, transparent 5.5px);
+  background-size: 20px 18px;
+  /* Centered so any partial bulb is split evenly between the two edges. */
+  background-position: center;
 }
 
 /* While loading, the bulbs chase. The only animation in the app; off for reduced motion. */
 @keyframes bulb-chase {
   to {
-    background-position: 16px center;
+    background-position: calc(50% + 20px) center;
   }
 }
 
 @utility bulbs-chasing {
   @media (prefers-reduced-motion: no-preference) {
-    animation: bulb-chase 0.6s steps(2) infinite;
+    animation: bulb-chase 0.5s steps(2) infinite;
   }
 }

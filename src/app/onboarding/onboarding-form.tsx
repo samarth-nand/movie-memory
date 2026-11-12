@@ -26,18 +26,14 @@ export function OnboardingForm() {
         aria-invalid={state.error ? true : undefined}
         aria-describedby={state.error ? "movie-error" : undefined}
         required
-        className="font-marquee mt-2 block w-full border-b-4 border-ink bg-transparent pb-2 text-[clamp(2.75rem,9vw,5.5rem)] placeholder:text-muted/35 aria-invalid:border-error"
+        className="font-marquee mt-2 block w-full border-b-[6px] border-ink bg-transparent pb-2 text-[clamp(2.75rem,9vw,5.5rem)] placeholder:text-muted/35 aria-invalid:border-error"
       />
       {state.error && (
         <p id="movie-error" role="alert" className="mt-3 font-medium text-error">
           {state.error}
         </p>
       )}
-      <button
-        type="submit"
-        disabled={pending}
-        className="mt-8 bg-ink px-6 py-3 font-medium text-screen transition-colors hover:bg-ink/85 disabled:cursor-wait disabled:bg-ink/60"
-      >
+      <button type="submit" disabled={pending} className="btn-pop mt-10">
         {pending ? "Saving…" : "Continue"}
       </button>
     </form>

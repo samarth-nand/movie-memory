@@ -40,22 +40,29 @@ export function FactCard() {
     <section
       aria-labelledby="fact-heading"
       aria-busy={state.kind === "loading"}
-      className={isError ? "border-2 border-error bg-screen" : "bg-marquee"}
+      className={
+        isError
+          ? "shadow-pop border-[3px] border-error bg-screen [--shadow-pop-color:var(--color-error)]"
+          : "shadow-pop border-[3px] border-ink bg-marquee"
+      }
     >
       {!isError && <div aria-hidden="true" className={`bulbs ${state.kind === "loading" ? "bulbs-chasing" : ""}`} />}
 
       <div className="px-5 py-6 sm:px-8 sm:py-8">
-        <h2 id="fact-heading" className="text-sm font-semibold">
+        <h2
+          id="fact-heading"
+          className={`inline-block px-2.5 py-1 text-sm font-semibold ${isError ? "bg-error text-screen" : "bg-ink text-marquee"}`}
+        >
           A fact about it
         </h2>
 
-        <div aria-live="polite" className="mt-3">
-          {state.kind === "loading" && <p className="text-xl sm:text-2xl">Finding a fact about your movie…</p>}
+        <div aria-live="polite" className="mt-4">
+          {state.kind === "loading" && <p className="text-2xl font-medium sm:text-3xl">Finding a fact about your movie…</p>}
 
           {state.kind === "ready" && (
             <>
               {/* Plain text only: React escapes it, and it's never parsed as HTML or markdown. */}
-              <p className="max-w-[60ch] text-xl leading-snug sm:text-2xl">{state.fact.content}</p>
+              <p className="max-w-[55ch] text-2xl leading-snug font-medium text-pretty sm:text-3xl">{state.fact.content}</p>
               {state.fact.stale && (
                 <p className="mt-4 text-sm font-medium">
                   We couldn&apos;t get a new fact just now, so here&apos;s your last one.
@@ -72,7 +79,7 @@ export function FactCard() {
               <button
                 type="button"
                 onClick={retry}
-                className="mt-5 bg-ink px-5 py-2.5 text-sm font-medium text-screen transition-colors hover:bg-ink/85"
+                className="btn-pop mt-6"
               >
                 Try again
               </button>

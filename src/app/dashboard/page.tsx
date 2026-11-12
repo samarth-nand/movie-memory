@@ -33,10 +33,13 @@ export default async function DashboardPage() {
       </header>
 
       <section aria-labelledby="movie-heading" className="py-12 sm:py-20">
-        <p className="text-muted">Your favorite movie</p>
+        <p className="flex flex-wrap items-center gap-3">
+          <span className="bg-ink px-2.5 py-1 text-sm font-semibold text-screen">Now showing</span>
+          <span className="text-muted">Your favorite movie</span>
+        </p>
         <h1
           id="movie-heading"
-          className={`font-marquee mt-3 ${titleSize} text-balance [overflow-wrap:anywhere]`}
+          className={`font-marquee mt-4 ${titleSize} text-balance [overflow-wrap:anywhere]`}
         >
           {movie}
         </h1>
