@@ -34,6 +34,20 @@ function storeFor(db: Db): FactStore {
       });
       return { ...fact, ageSeconds: 0 };
     },
+
+    // The failure marker lives on User (one per user) and uses the database clock,
+    // so every app instance sees the same cooldown.
+    async failedWithin(userId, seconds) {
+      const rows = await db.$queryRaw<{ failed: boolean }[]>`
+        SELECT "factFailedAt" > clock_timestamp() - make_interval(secs => ${seconds}) AS "failed"
+        FROM "User"
+        WHERE "id" = ${userId}`;
+      return rows[0]?.failed === true;
+    },
+
+    async recordFailure(userId) {
+      await db.$executeRaw`UPDATE "User" SET "factFailedAt" = clock_timestamp() WHERE "id" = ${userId}`;
+    },
   };
 }
 

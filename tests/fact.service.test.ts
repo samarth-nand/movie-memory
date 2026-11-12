@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   CACHE_WINDOW_SECONDS,
   createFactService,
+  FAILURE_COOLDOWN_SECONDS,
   type FactRepository,
   type FactStore,
   type StoredFact,
@@ -11,11 +12,13 @@ import {
  * In-memory stand-in for the Postgres repository. It mirrors the two properties
  * the service relies on: ages come from one shared clock (the "database clock"),
  * and withUserLock lets only one caller per user run at a time.
+ * (tests/fact.repository.integration.test.ts checks the real one against Postgres.)
  */
 function createFakeFacts() {
   let nowMs = 1_000_000;
   const rows: { userId: string; movieTitle: string; content: string; createdAtMs: number }[] = [];
   const locks = new Map<string, Promise<unknown>>();
+  const failedAtMs = new Map<string, number>();
 
   const toStored = (row: (typeof rows)[number]): StoredFact => ({
     content: row.content,
@@ -33,6 +36,13 @@ function createFakeFacts() {
       const row = { userId, movieTitle, content, createdAtMs: nowMs };
       rows.push(row);
       return toStored(row);
+    },
+    async failedWithin(userId, seconds) {
+      const at = failedAtMs.get(userId);
+      return at !== undefined && nowMs - at < seconds * 1000;
+    },
+    async recordFailure(userId) {
+      failedAtMs.set(userId, nowMs);
     },
   };
 
@@ -189,6 +199,53 @@ describe("failure fallback", () => {
     const result = await service.getFactForUser("alice");
 
     expect(result).toMatchObject({ fact: { content: "Previous fact", stale: true } });
+  });
+});
+
+describe("failure cooldown", () => {
+  it("skips OpenAI for a while after a failure and serves the fallback", async () => {
+    facts.seed("alice", MOVIE, "Previous fact", 120);
+    generateFact.mockRejectedValueOnce(new Error("timeout"));
+    await service.getFactForUser("alice");
+
+    facts.advance(FAILURE_COOLDOWN_SECONDS - 1);
+    const result = await service.getFactForUser("alice");
+
+    expect(generateFact).toHaveBeenCalledOnce();
+    expect(result).toMatchObject({ fact: { content: "Previous fact", stale: true } });
+  });
+
+  it("tries OpenAI again once the cooldown has passed", async () => {
+    generateFact.mockRejectedValueOnce(new Error("timeout"));
+    expect(await service.getFactForUser("alice")).toEqual({ status: "unavailable" });
+
+    facts.advance(FAILURE_COOLDOWN_SECONDS); // exactly the cooldown: "less than" has passed
+    const result = await service.getFactForUser("alice");
+
+    expect(generateFact).toHaveBeenCalledTimes(2);
+    expect(result).toMatchObject({ fact: { content: "New fact #1 about Heat", stale: false } });
+  });
+
+  it("makes one OpenAI call for a burst during an outage", async () => {
+    let fail!: () => void;
+    generateFact.mockImplementationOnce(() => new Promise((_, reject) => (fail = () => reject(new Error("down")))));
+
+    const first = service.getFactForUser("alice");
+    const second = service.getFactForUser("alice");
+    await vi.waitFor(() => expect(generateFact).toHaveBeenCalledOnce());
+    fail();
+
+    expect(await Promise.all([first, second])).toEqual([{ status: "unavailable" }, { status: "unavailable" }]);
+    expect(generateFact).toHaveBeenCalledOnce();
+  });
+
+  it("is per user: one user's failure doesn't block another", async () => {
+    generateFact.mockRejectedValueOnce(new Error("timeout"));
+    await service.getFactForUser("bob");
+
+    const result = await service.getFactForUser("alice");
+
+    expect(result).toMatchObject({ status: "ok", fact: { stale: false } });
   });
 });
 

@@ -1,8 +1,10 @@
 // Fact rules for Variant A: the 60-second cache window, burst protection, and
-// failure fallback. This file has no Prisma, OpenAI, or Next imports; its
+// failure fallback with a short cooldown. This file has no Prisma, OpenAI, or Next imports; its
 // dependencies are passed in, so tests run it with in-memory fakes and no network.
 
 export const CACHE_WINDOW_SECONDS = 60;
+/** After a failed generation, skip OpenAI for this long and serve the fallback. */
+export const FAILURE_COOLDOWN_SECONDS = 15;
 
 export type StoredFact = {
   content: string;
@@ -15,6 +17,9 @@ export type StoredFact = {
 export interface FactStore {
   findLatest(userId: string, movieTitle: string): Promise<StoredFact | null>;
   insert(userId: string, movieTitle: string, content: string): Promise<StoredFact>;
+  /** Whether this user's last generation failed less than `seconds` ago (database clock). */
+  failedWithin(userId: string, seconds: number): Promise<boolean>;
+  recordFailure(userId: string): Promise<void>;
 }
 
 export interface FactRepository extends FactStore {
@@ -59,6 +64,8 @@ export function createFactService(deps: FactServiceDeps) {
 
     // What to show if generation fails: the most recent fact we've seen.
     let fallback = cached;
+    const failed = (): FactResult => (fallback ? ok(fallback, true) : { status: "unavailable" });
+
     try {
       return await deps.facts.withUserLock(userId, async (store) => {
         // Re-check after acquiring the lock. If another tab held it, that request
@@ -67,13 +74,24 @@ export function createFactService(deps: FactServiceDeps) {
         if (latest && isFresh(latest)) return ok(latest, false);
         fallback = latest ?? fallback;
 
-        const content = await deps.generateFact(movie);
-        return ok(await store.insert(userId, movie, content), false);
+        // If the request ahead of us just failed, OpenAI is likely still down:
+        // answer now instead of every waiting tab retrying in turn.
+        if (await store.failedWithin(userId, FAILURE_COOLDOWN_SECONDS)) return failed();
+
+        try {
+          const content = await deps.generateFact(movie);
+          return ok(await store.insert(userId, movie, content), false);
+        } catch (error) {
+          // Caught inside the transaction so the failure marker commits.
+          deps.logError?.("Fact generation failed", error);
+          await store.recordFailure(userId);
+          return failed();
+        }
       });
     } catch (error) {
-      // OpenAI failure, lock wait timeout, or transaction timeout: same answer to the user.
-      deps.logError?.("Fact generation failed", error);
-      return fallback ? ok(fallback, true) : { status: "unavailable" };
+      // Lock wait timeout, transaction timeout, or a database error.
+      deps.logError?.("Fact lookup failed", error);
+      return failed();
     }
   }
 

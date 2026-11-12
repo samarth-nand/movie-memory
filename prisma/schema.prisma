@@ -58,6 +58,10 @@ model User {
   // anything the app accepts fits.
   favoriteMovie String? @db.VarChar(100)
 
+  // Last failed fact generation (database clock). Read with a short cooldown so a
+  // burst during an OpenAI outage doesn't retry once per waiting request.
+  factFailedAt DateTime? @db.Timestamptz(3)
+
   accounts Account[]
   sessions Session[]
   facts    Fact[]
