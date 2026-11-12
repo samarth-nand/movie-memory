@@ -4,6 +4,8 @@ Sign in with Google, name your favorite movie, and get a fun fact about it from 
 
 Stack: TypeScript, Next.js 16 (App Router), React 19, Tailwind 4, Postgres (Neon), Prisma 7, Auth.js v5 (Google), the OpenAI API, and Vitest.
 
+**Walkthrough video:** [Watch on Loom](https://www.loom.com/share/88c343a158aa48e9b553538da54e8d56). It covers the app, the key implementation decisions, and the tradeoffs.
+
 ## Setup
 
 Requires Node 20.9 or later.
